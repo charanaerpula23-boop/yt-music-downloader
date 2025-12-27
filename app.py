@@ -16,6 +16,10 @@ DOWNLOADS_DIR.mkdir(exist_ok=True)
 def index():
     return render_template('index.html')
 
+@app.route('/health')
+def health():
+    return jsonify({'status': 'ok'}), 200
+
 @app.route('/search', methods=['POST'])
 def search():
     try:
