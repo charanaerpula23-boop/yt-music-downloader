@@ -71,48 +71,75 @@ def download():
         # Clean filename
         safe_title = re.sub(r'[<>:"/\\|?*]', '', title)
         
-        # yt-dlp options based on format with aggressive bot bypass
+        # Format selector
         if format_type == 'm4a':
             format_selector = 'bestaudio[ext=m4a]/bestaudio'
         else:  # webm
             format_selector = 'bestaudio[ext=webm]/bestaudio'
         
-        ydl_opts = {
-            'format': format_selector,
-            'outtmpl': str(DOWNLOADS_DIR / f'{safe_title}.%(ext)s'),
-            'quiet': True,
-            'no_warnings': True,
-            'extractor_args': {
-                'youtube': {
-                    'player_client': ['android_music', 'android', 'web'],
-                    'player_skip': ['webpage', 'configs'],
-                }
+        # Use multiple strategies to bypass bot detection
+        strategies = [
+            # Strategy 1: Android Embed
+            {
+                'format': format_selector,
+                'outtmpl': str(DOWNLOADS_DIR / f'{safe_title}.%(ext)s'),
+                'quiet': True,
+                'no_warnings': True,
+                'extractor_args': {
+                    'youtube': {
+                        'player_client': ['android_embedded'],
+                        'skip': ['dash', 'hls'],
+                    }
+                },
             },
-            'http_headers': {
-                'User-Agent': 'com.google.android.youtube/17.36.4 (Linux; U; Android 12; GB) gzip',
-                'Accept': '*/*',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Accept-Encoding': 'gzip, deflate',
-                'X-YouTube-Client-Name': '3',
-                'X-YouTube-Client-Version': '17.36.4',
+            # Strategy 2: iOS Music
+            {
+                'format': format_selector,
+                'outtmpl': str(DOWNLOADS_DIR / f'{safe_title}.%(ext)s'),
+                'quiet': True,
+                'no_warnings': True,
+                'extractor_args': {
+                    'youtube': {
+                        'player_client': ['ios'],
+                    }
+                },
+                'http_headers': {
+                    'User-Agent': 'com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X;)',
+                },
             },
-            'cookiefile': None,  # Disable cookies requirement
-            'age_limit': None,
-        }
+            # Strategy 3: TV Embedded
+            {
+                'format': format_selector,
+                'outtmpl': str(DOWNLOADS_DIR / f'{safe_title}.%(ext)s'),
+                'quiet': True,
+                'no_warnings': True,
+                'extractor_args': {
+                    'youtube': {
+                        'player_client': ['tv_embedded'],
+                    }
+                },
+            },
+        ]
         
-        # Download the song
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(f'https://www.youtube.com/watch?v={video_id}', download=True)
-            downloaded_file = ydl.prepare_filename(info)
+        last_error = None
+        for ydl_opts in strategies:
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(f'https://www.youtube.com/watch?v={video_id}', download=True)
+                    downloaded_file = ydl.prepare_filename(info)
+                    filename = os.path.basename(downloaded_file)
+                    
+                    return jsonify({
+                        'success': True,
+                        'message': f'Downloaded: {filename}',
+                        'filename': filename
+                    })
+            except Exception as e:
+                last_error = str(e)
+                continue
         
-        # Get the actual filename
-        filename = os.path.basename(downloaded_file)
-        
-        return jsonify({
-            'success': True,
-            'message': f'Downloaded: {filename}',
-            'filename': filename
-        })
+        # If all strategies fail
+        return jsonify({'error': f'All download methods failed. Last error: {last_error}'}), 500
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -125,42 +152,65 @@ def preview():
         if not video_id:
             return jsonify({'error': 'Video ID is required'}), 400
         
-        # Extract audio stream URL using yt-dlp with aggressive bot bypass
-        ydl_opts = {
-            'format': 'bestaudio[ext=m4a]/bestaudio/best',
-            'quiet': True,
-            'no_warnings': True,
-            'extractor_args': {
-                'youtube': {
-                    'player_client': ['android_music', 'android', 'web'],
-                    'player_skip': ['webpage', 'configs'],
-                }
+        # Use multiple strategies to bypass bot detection
+        strategies = [
+            # Strategy 1: Android Embed
+            {
+                'format': 'bestaudio',
+                'quiet': True,
+                'no_warnings': True,
+                'extractor_args': {
+                    'youtube': {
+                        'player_client': ['android_embedded'],
+                        'skip': ['dash', 'hls'],
+                    }
+                },
             },
-            'http_headers': {
-                'User-Agent': 'com.google.android.youtube/17.36.4 (Linux; U; Android 12; GB) gzip',
-                'Accept': '*/*',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Accept-Encoding': 'gzip, deflate',
-                'X-YouTube-Client-Name': '3',
-                'X-YouTube-Client-Version': '17.36.4',
+            # Strategy 2: iOS Music
+            {
+                'format': 'bestaudio',
+                'quiet': True,
+                'no_warnings': True,
+                'extractor_args': {
+                    'youtube': {
+                        'player_client': ['ios'],
+                    }
+                },
+                'http_headers': {
+                    'User-Agent': 'com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X;)',
+                },
             },
-            'cookiefile': None,  # Disable cookies requirement
-            'age_limit': None,
-        }
+            # Strategy 3: TV Embedded
+            {
+                'format': 'bestaudio',
+                'quiet': True,
+                'no_warnings': True,
+                'extractor_args': {
+                    'youtube': {
+                        'player_client': ['tv_embedded'],
+                    }
+                },
+            },
+        ]
         
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(f'https://www.youtube.com/watch?v={video_id}', download=False)
-            
-            # Get the direct audio URL
-            audio_url = info.get('url', '')
-            
-            if not audio_url:
-                return jsonify({'error': 'Could not extract audio URL'}), 500
+        last_error = None
+        for ydl_opts in strategies:
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(f'https://www.youtube.com/watch?v={video_id}', download=False)
+                    audio_url = info.get('url', '')
+                    
+                    if audio_url:
+                        return jsonify({
+                            'success': True,
+                            'streamUrl': audio_url
+                        })
+            except Exception as e:
+                last_error = str(e)
+                continue
         
-        return jsonify({
-            'success': True,
-            'streamUrl': audio_url
-        })
+        # If all strategies fail
+        return jsonify({'error': f'All extraction methods failed. Last error: {last_error}'}), 500
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
