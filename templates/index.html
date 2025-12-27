@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YT Music Search</title>
+    <style>
+        :root {
+            --bg: #000000;
+            --surface: #0a0a0a;
+            --border: #222222;
+            --text: #ffffff;
+            --text-muted: #888888;
+            --accent: #ffffff;
+            --error: #ff3333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 40px 20px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 60px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 300;
+            letter-spacing: -1px;
+            margin-bottom: 8px;
+            text-transform: none; /* Refined look */
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+        }
+
+        /* Search Section */
+        .search-box {
+            margin-bottom: 60px;
+        }
+
+        .search-form {
+            display: flex;
+            gap: 0;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+            transition: border-color 0.3s ease;
+        }
+
+        .search-form:focus-within {
+            border-color: var(--accent);
+        }
+
+        #searchInput {
+            flex: 1;
+            padding: 16px 20px;
+            font-size: 16px;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text);
+        }
+
+        #searchBtn {
+            padding: 0 30px;
+            background: var(--accent);
+            color: var(--bg);
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        #searchBtn:hover:not(:disabled) {
+            opacity: 0.8;
+        }
+
+        #searchBtn:disabled {
+            background: var(--border);
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        /* Status & Loading */
+        #statusArea {
+            display: none;
+            margin: 40px 0;
+        }
+
+        .loader-card {
+            text-align: left;
+        }
+
+        #statusText {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 1px;
+            background: var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            width: 30%;
+            position: absolute;
+            animation: loadingMove 1.5s infinite ease-in-out;
+        }
+
+        @keyframes loadingMove {
+            0% { left: -30%; width: 30%; }
+            50% { width: 50%; }
+            100% { left: 100%; width: 30%; }
+        }
+
+        /* Warnings and Errors */
+        #error {
+            background: transparent;
+            border: 1px solid var(--error);
+            color: var(--error);
+            padding: 16px;
+            border-radius: 4px;
+            margin-bottom: 40px;
+            display: none;
+            font-size: 0.85rem;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+        }
+
+        /* Results Grid */
+        #results {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 40px;
+        }
+
+        .song-card {
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+            transition: opacity 0.3s ease;
+            opacity: 0;
+            animation: fadeInCard 0.4s ease forwards;
+        }
+
+        @keyframes fadeInCard {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .song-card:hover {
+            opacity: 0.85;
+        }
+
+        .song-thumbnail-container {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            margin-bottom: 16px;
+            overflow: hidden;
+            filter: grayscale(100%);
+            transition: filter 0.3s ease, border-color 0.3s ease;
+        }
+
+        .song-card:hover .song-thumbnail-container {
+            filter: grayscale(0%);
+            border-color: var(--text-muted);
+        }
+
+        .song-thumbnail {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .song-info {
+            padding: 0;
+        }
+
+        .song-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .song-artist {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-bottom: 12px;
+        }
+
+        .song-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+        }
+
+        .duration-tag {
+            border: 1px solid var(--border);
+            padding: 2px 6px;
+        }
+
+        .download-btn {
+            flex: 1;
+            padding: 10px;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .download-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .download-btn svg {
+            width: 14px;
+            height: 14px;
+            fill: currentColor;
+        }
+
+        .download-btn:hover {
+            background: var(--text);
+            color: var(--bg);
+            border-color: var(--text);
+        }
+
+        .download-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .download-btn.downloading {
+            background: var(--accent);
+            color: var(--bg);
+            border-color: var(--accent);
+        }
+
+        .download-btn.success {
+            background: #00ff00;
+            color: #000;
+            border-color: #00ff00;
+        }
+
+        .play-btn {
+            width: 100%;
+            margin-top: 8px;
+            padding: 10px;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .play-btn:hover {
+            background: var(--text);
+            color: var(--bg);
+            border-color: var(--text);
+        }
+
+        .play-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .play-btn.playing {
+            background: var(--accent);
+            color: var(--bg);
+            border-color: var(--accent);
+        }
+
+        .audio-player {
+            margin-top: 8px;
+            display: none;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 12px;
+            border-radius: 4px;
+        }
+
+        .audio-player.active {
+            display: block;
+        }
+
+        .audio-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .audio-progress {
+            flex: 1;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .audio-progress-bar {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        .audio-time {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            min-width: 80px;
+            text-align: right;
+        }
+
+        .audio-player audio {
+            display: none;
+        }
+
+        @media (max-width: 600px) {
+            h1 { font-size: 1.5rem; }
+            .search-form { flex-direction: column; border: none; }
+            #searchInput { border: 1px solid var(--border); margin-bottom: 10px; border-radius: 4px; }
+            #searchBtn { height: 52px; border-radius: 4px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Music Search</h1>
+            <p>Access the library via YouTube Music</p>
+        </header>
+        
+        <div class="search-box">
+            <div class="search-form">
+                <input type="text" id="searchInput" placeholder="Search artist, song, or album..." autocomplete="off" />
+                <button id="searchBtn">Find</button>
+            </div>
+        </div>
+
+        <div id="statusArea">
+            <div class="loader-card">
+                <div id="statusText">Indexing records...</div>
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="error"></div>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const statusArea = document.getElementById('statusArea');
+        const error = document.getElementById('error');
+        const results = document.getElementById('results');
+
+        searchBtn.addEventListener('click', performSearch);
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') performSearch();
+        });
+
+        async function performSearch() {
+            const query = searchInput.value.trim();
+            
+            if (!query) {
+                showError('Warning: Empty Query. Input Required.');
+                return;
+            }
+
+            error.style.display = 'none';
+            results.innerHTML = '';
+            statusArea.style.display = 'block';
+            searchBtn.disabled = true;
+
+            try {
+                const response = await fetch('/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Connection failure');
+                }
+
+                displayResults(data.songs);
+            } catch (err) {
+                showError('System Error: ' + err.message);
+            } finally {
+                statusArea.style.display = 'none';
+                searchBtn.disabled = false;
+            }
+        }
+
+        function displayResults(songs) {
+            if (!songs || songs.length === 0) {
+                results.innerHTML = '<div class="no-results" style="grid-column: 1/-1; text-align: center; color: var(--text-muted); text-transform: uppercase; font-size: 0.8rem; letter-spacing: 2px;">No results found in index.</div>';
+                return;
+            }
+
+            results.innerHTML = songs.map((song, index) => `
+                <div class="song-card" style="animation-delay: ${index * 0.05}s">
+                    <div class="song-thumbnail-container">
+                        ${song.thumbnail ? 
+                            `<img src="${song.thumbnail}" alt="" class="song-thumbnail" onerror="this.src='/static/placeholder.png';">` : 
+                            '<img src="/static/placeholder.png" alt="" class="song-thumbnail">'}
+                    </div>
+                    <div class="song-info">
+                        <div class="song-title" title="${song.title}">${song.title}</div>
+                        <div class="song-artist">${song.artist}</div>
+                        <div class="song-meta">
+                            <span>${song.album || 'Single'}</span>
+                            <span class="duration-tag">${song.duration}</span>
+                        </div>
+                        <div class="download-buttons">
+                           
+                            <button class="download-btn" data-videoid="${song.videoId}" data-title="${song.title}" data-format="webm" onclick="downloadSong(this)">
+                                WEBM
+                            </button>
+                             <button class="download-btn" data-videoid="${song.videoId}" data-title="${song.title}" data-format="m4a" onclick="downloadSong(this)">
+                                <svg viewBox="0 0 814 1000" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76.5 0-103.7 40.8-165.9 40.8s-105.6-57-155.5-127C46.7 790.7 0 663 0 541.8c0-194.4 126.4-297.5 250.8-297.5 66.1 0 121.2 43.4 162.7 43.4 39.5 0 101.1-46 176.3-46 28.5 0 130.9 2.6 198.3 99.2zm-234-181.5c31.1-36.9 53.1-88.1 53.1-139.3 0-7.1-.6-14.3-1.9-20.1-50.6 1.9-110.8 33.7-147.1 75.8-28.5 32.4-55.1 83.6-55.1 135.5 0 7.8 1.3 15.6 1.9 18.1 3.2.6 8.4 1.3 13.6 1.3 45.4 0 102.5-30.4 135.5-71.3z"/>
+                                </svg>
+                                M4A
+                            </button>
+                        </div>
+                        <button class="play-btn" data-videoid="${song.videoId}" onclick="previewSong(this)">▶ Preview</button>
+                        <div class="audio-player" id="player-${song.videoId}">
+                            <div class="audio-controls">
+                                <div class="audio-progress" onclick="seekAudio(event, '${song.videoId}')">
+                                    <div class="audio-progress-bar" id="progress-${song.videoId}"></div>
+                                </div>
+                                <div class="audio-time" id="time-${song.videoId}">0:00 / 0:00</div>
+                            </div>
+                            <audio preload="none"></audio>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showError(message) {
+            error.textContent = message;
+            error.style.display = 'block';
+            statusArea.style.display = 'none';
+            searchBtn.disabled = false;
+        }
+
+        async function downloadSong(button) {
+            const videoId = button.dataset.videoid;
+            const title = button.dataset.title;
+            const format = button.dataset.format;
+            
+            button.disabled = true;
+            button.classList.add('downloading');
+            const originalText = button.innerHTML;
+            button.innerHTML = format === 'm4a' ? 
+                '<svg viewBox="0 0 814 1000" xmlns="http://www.w3.org/2000/svg"><path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76.5 0-103.7 40.8-165.9 40.8s-105.6-57-155.5-127C46.7 790.7 0 663 0 541.8c0-194.4 126.4-297.5 250.8-297.5 66.1 0 121.2 43.4 162.7 43.4 39.5 0 101.1-46 176.3-46 28.5 0 130.9 2.6 198.3 99.2zm-234-181.5c31.1-36.9 53.1-88.1 53.1-139.3 0-7.1-.6-14.3-1.9-20.1-50.6 1.9-110.8 33.7-147.1 75.8-28.5 32.4-55.1 83.6-55.1 135.5 0 7.8 1.3 15.6 1.9 18.1 3.2.6 8.4 1.3 13.6 1.3 45.4 0 102.5-30.4 135.5-71.3z"/></svg> ...' : 
+                '...';
+
+            try {
+                const response = await fetch('/download', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ videoId: videoId, title: title, format: format })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Download failed');
+                }
+
+                button.classList.remove('downloading');
+                button.classList.add('success');
+                button.innerHTML = '✓';
+                
+                setTimeout(() => {
+                    button.classList.remove('success');
+                    button.innerHTML = originalText;
+                    button.disabled = false;
+                }, 3000);
+
+            } catch (err) {
+                button.classList.remove('downloading');
+                button.innerHTML = '✗';
+                showError('Download Error: ' + err.message);
+                
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.disabled = false;
+                }, 3000);
+            }
+        }
+
+        let currentPlaying = null;
+
+        async function previewSong(button) {
+            const videoId = button.dataset.videoid;
+            const playerDiv = document.getElementById(`player-${videoId}`);
+            const audioElement = playerDiv.querySelector('audio');
+            const progressBar = document.getElementById(`progress-${videoId}`);
+            const timeDisplay = document.getElementById(`time-${videoId}`);
+            
+            // If already playing this song, stop it
+            if (currentPlaying === audioElement && !audioElement.paused) {
+                audioElement.pause();
+                button.textContent = '▶ Preview';
+                button.classList.remove('playing');
+                playerDiv.classList.remove('active');
+                currentPlaying = null;
+                return;
+            }
+            
+            // Stop any other playing audio
+            if (currentPlaying && currentPlaying !== audioElement) {
+                currentPlaying.pause();
+                const allPlayBtns = document.querySelectorAll('.play-btn');
+                const allPlayers = document.querySelectorAll('.audio-player');
+                allPlayBtns.forEach(btn => {
+                    btn.textContent = '▶ Preview';
+                    btn.classList.remove('playing');
+                });
+                allPlayers.forEach(p => p.classList.remove('active'));
+            }
+            
+            button.disabled = true;
+            button.textContent = 'Loading...';
+            
+            try {
+                const response = await fetch('/preview', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ videoId: videoId })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Preview failed');
+                }
+
+                // Set audio source and show player
+                audioElement.src = data.streamUrl;
+                playerDiv.classList.add('active');
+                
+                // Update progress bar and time
+                audioElement.ontimeupdate = () => {
+                    const progress = (audioElement.currentTime / audioElement.duration) * 100;
+                    progressBar.style.width = progress + '%';
+                    timeDisplay.textContent = formatTime(audioElement.currentTime) + ' / ' + formatTime(audioElement.duration);
+                };
+                
+                // Play audio
+                await audioElement.play();
+                button.textContent = '⏸ Stop';
+                button.classList.add('playing');
+                currentPlaying = audioElement;
+                
+                // Handle audio end
+                audioElement.onended = () => {
+                    button.textContent = '▶ Preview';
+                    button.classList.remove('playing');
+                    playerDiv.classList.remove('active');
+                    progressBar.style.width = '0%';
+                    currentPlaying = null;
+                };
+
+            } catch (err) {
+                showError('Preview Error: ' + err.message);
+                button.textContent = '▶ Preview';
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        function seekAudio(event, videoId) {
+            const playerDiv = document.getElementById(`player-${videoId}`);
+            const audioElement = playerDiv.querySelector('audio');
+            const progressContainer = event.currentTarget;
+            const clickX = event.offsetX;
+            const width = progressContainer.offsetWidth;
+            const percentage = clickX / width;
+            audioElement.currentTime = percentage * audioElement.duration;
+        }
+
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return '0:00';
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return mins + ':' + (secs < 10 ? '0' : '') + secs;
+        }
+    </script>
+</body>
+</html>
