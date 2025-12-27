@@ -71,7 +71,7 @@ def download():
         # Clean filename
         safe_title = re.sub(r'[<>:"/\\|?*]', '', title)
         
-        # yt-dlp options based on format
+        # yt-dlp options based on format with bot detection bypass
         if format_type == 'm4a':
             format_selector = 'bestaudio[ext=m4a]/bestaudio'
         else:  # webm
@@ -82,6 +82,13 @@ def download():
             'outtmpl': str(DOWNLOADS_DIR / f'{safe_title}.%(ext)s'),
             'quiet': True,
             'no_warnings': True,
+            'extractor_args': {'youtube': {'player_client': ['android', 'web']}},
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-us,en;q=0.5',
+                'Sec-Fetch-Mode': 'navigate',
+            }
         }
         
         # Download the song
@@ -109,11 +116,18 @@ def preview():
         if not video_id:
             return jsonify({'error': 'Video ID is required'}), 400
         
-        # Extract audio stream URL using yt-dlp
+        # Extract audio stream URL using yt-dlp with bot detection bypass
         ydl_opts = {
             'format': 'bestaudio[ext=m4a]/bestaudio/best',
             'quiet': True,
             'no_warnings': True,
+            'extractor_args': {'youtube': {'player_client': ['android', 'web']}},
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-us,en;q=0.5',
+                'Sec-Fetch-Mode': 'navigate',
+            }
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
