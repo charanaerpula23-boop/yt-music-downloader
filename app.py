@@ -138,23 +138,9 @@ def get_ydl_options(format_selector='bestaudio', output_template=None):
         }
     })
     
-    # Strategy 6: Try cookies from browser (Chrome)
-    try:
-        strategies.append({
-            **base_opts,
-            'cookiesfrombrowser': ('chrome',)
-        })
-    except:
-        pass
-    
-    # Strategy 7: Try cookies from browser (Firefox)
-    try:
-        strategies.append({
-            **base_opts,
-            'cookiesfrombrowser': ('firefox',)
-        })
-    except:
-        pass
+    # Note: Browser cookie strategies are disabled for server environments
+    # They only work on local machines with browsers installed
+    # Use cookies.txt file instead (Strategy 1)
     
     return strategies
 
