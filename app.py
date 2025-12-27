@@ -71,7 +71,7 @@ def download():
         # Clean filename
         safe_title = re.sub(r'[<>:"/\\|?*]', '', title)
         
-        # yt-dlp options based on format with bot detection bypass
+        # yt-dlp options based on format with aggressive bot bypass
         if format_type == 'm4a':
             format_selector = 'bestaudio[ext=m4a]/bestaudio'
         else:  # webm
@@ -82,18 +82,27 @@ def download():
             'outtmpl': str(DOWNLOADS_DIR / f'{safe_title}.%(ext)s'),
             'quiet': True,
             'no_warnings': True,
-            'extractor_args': {'youtube': {'player_client': ['android', 'web']}},
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android_music', 'android', 'web'],
+                    'player_skip': ['webpage', 'configs'],
+                }
+            },
             'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'en-us,en;q=0.5',
-                'Sec-Fetch-Mode': 'navigate',
-            }
+                'User-Agent': 'com.google.android.youtube/17.36.4 (Linux; U; Android 12; GB) gzip',
+                'Accept': '*/*',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate',
+                'X-YouTube-Client-Name': '3',
+                'X-YouTube-Client-Version': '17.36.4',
+            },
+            'cookiefile': None,  # Disable cookies requirement
+            'age_limit': None,
         }
         
         # Download the song
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(f'https://music.youtube.com/watch?v={video_id}', download=True)
+            info = ydl.extract_info(f'https://www.youtube.com/watch?v={video_id}', download=True)
             downloaded_file = ydl.prepare_filename(info)
         
         # Get the actual filename
@@ -116,22 +125,31 @@ def preview():
         if not video_id:
             return jsonify({'error': 'Video ID is required'}), 400
         
-        # Extract audio stream URL using yt-dlp with bot detection bypass
+        # Extract audio stream URL using yt-dlp with aggressive bot bypass
         ydl_opts = {
             'format': 'bestaudio[ext=m4a]/bestaudio/best',
             'quiet': True,
             'no_warnings': True,
-            'extractor_args': {'youtube': {'player_client': ['android', 'web']}},
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android_music', 'android', 'web'],
+                    'player_skip': ['webpage', 'configs'],
+                }
+            },
             'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'en-us,en;q=0.5',
-                'Sec-Fetch-Mode': 'navigate',
-            }
+                'User-Agent': 'com.google.android.youtube/17.36.4 (Linux; U; Android 12; GB) gzip',
+                'Accept': '*/*',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate',
+                'X-YouTube-Client-Name': '3',
+                'X-YouTube-Client-Version': '17.36.4',
+            },
+            'cookiefile': None,  # Disable cookies requirement
+            'age_limit': None,
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(f'https://music.youtube.com/watch?v={video_id}', download=False)
+            info = ydl.extract_info(f'https://www.youtube.com/watch?v={video_id}', download=False)
             
             # Get the direct audio URL
             audio_url = info.get('url', '')
